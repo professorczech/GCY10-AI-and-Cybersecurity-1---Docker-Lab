@@ -1,0 +1,10 @@
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /var/log/mail.log
+    - /var/log/syslog
+  tags: ["syslog"]
+
+output.logstash:
+  hosts: ["soc-logstash:5044"]

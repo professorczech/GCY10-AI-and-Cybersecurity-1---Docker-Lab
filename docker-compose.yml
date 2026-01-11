@@ -1,0 +1,129 @@
+services:
+  # ---------------------------------------------------------
+  # STUDENT DESKTOP
+  # ---------------------------------------------------------
+  desktop:
+    build:
+      context: .
+      dockerfile: desktop/Dockerfile
+    container_name: soc-student-desktop
+    hostname: lab.local
+    shm_size: '2gb'
+    ports:
+      - "6080:80"
+      - "3333:3333"
+      - "8080:8080"
+    environment:
+      - USER=alice
+      - PASSWORD=Password123!
+    volumes:
+      - logs_volume:/var/log
+    depends_on:
+      - elasticsearch
+      - logstash
+    networks:
+      - soc-net
+
+  # ---------------------------------------------------------
+  # ELK STACK
+  # ---------------------------------------------------------
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.13
+    container_name: soc-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m" # Cap memory usage
+    ports:
+      - "9200:9200"
+    networks:
+      - soc-net
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.17.13
+    container_name: soc-logstash
+    volumes:
+      - ./elk/logstash/pipeline:/usr/share/logstash/pipeline
+    ports:
+      - "5044:5044"
+    depends_on:
+      - elasticsearch
+    networks:
+      - soc-net
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.13
+    container_name: soc-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://soc-elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - soc-net
+
+  # ---------------------------------------------------------
+  # OLLAMA (LLM Backend)
+  # ---------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: soc-ollama
+    volumes:
+      - ollama_storage:/root/.ollama
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    networks:
+      - soc-net
+    restart: always
+    
+  # ---------------------------------------------------------
+  # OPEN WEBUI (Chat Interface for OLLAMA)
+  # ---------------------------------------------------------
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: soc-open-webui
+    ports:
+      - "3000:8080"
+    environment:
+      - OLLAMA_BASE_URL=http://soc-ollama:11434
+    volumes:
+      - open_webui_storage:/app/backend/data
+    depends_on:
+      - ollama
+    networks:
+      - soc-net
+    restart: always
+
+  # ---------------------------------------------------------
+  # SHUFFLE (SOAR) - Lite Version
+  # Shuffle is heavy. Minimizing to backend+frontend for lab.
+  # ---------------------------------------------------------
+  shuffle-frontend:
+    image: ghcr.io/shuffle/shuffle-frontend:latest
+    container_name: soc-shuffle-frontend
+    ports:
+      - "3001:80"
+      - "443:443"
+    networks:
+      - soc-net
+    depends_on:
+      - shuffle-backend
+
+  shuffle-backend:
+    image: ghcr.io/shuffle/shuffle-backend:latest
+    container_name: soc-shuffle-backend
+    environment:
+      - SHUFFLE_ELASTICSEARCH_URL=http://soc-elasticsearch:9200
+    networks:
+      - soc-net
+
+networks:
+  soc-net:
+    driver: bridge
+
+volumes:
+  logs_volume:
+  ollama_storage:
+  open_webui_storage:

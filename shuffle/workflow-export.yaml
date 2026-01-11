@@ -1,0 +1,18 @@
+name: "Student Phishing Response"
+description: "Analyzes incoming email alerts and checks GoPhish status"
+nodes:
+  - id: "trigger_email"
+    app_name: "Email"
+    label: "On New Email"
+    is_trigger: true
+    parameters:
+      - name: "mailbox"
+        value: "alice@lab.local"
+  - id: "check_gophish"
+    app_name: "GoPhish"
+    label: "Get Campaign Details"
+    parameters:
+      - name: "url"
+        value: "http://soc-student-desktop:3333"
+      - name: "apikey"
+        value: "replace_me_in_lab"
