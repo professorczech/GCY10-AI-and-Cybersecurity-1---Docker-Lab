@@ -96,28 +96,66 @@ services:
       - soc-net
     restart: always
 
-  # ---------------------------------------------------------
-  # SHUFFLE (SOAR) - Lite Version
-  # Shuffle is heavy. Minimizing to backend+frontend for lab.
+# ---------------------------------------------------------
+  # SHUFFLE (SOAR) - FIXED CONFIGURATION
   # ---------------------------------------------------------
   shuffle-frontend:
     image: ghcr.io/shuffle/shuffle-frontend:latest
     container_name: soc-shuffle-frontend
     ports:
       - "3001:80"
-      - "443:443"
+      - "3443:443"
+    environment:
+      - BACKEND_HOSTNAME=soc-shuffle-backend
+      - BACKEND_PORT=5001
     networks:
       - soc-net
     depends_on:
       - shuffle-backend
+    restart: unless-stopped
 
   shuffle-backend:
     image: ghcr.io/shuffle/shuffle-backend:latest
     container_name: soc-shuffle-backend
+    hostname: shuffle-backend
+    ports:
+      - "5001:5001"
     environment:
+      # Point both variables to Elastic to ensure compatibility
       - SHUFFLE_ELASTICSEARCH_URL=http://soc-elasticsearch:9200
+      - SHUFFLE_OPENSEARCH_URL=http://soc-elasticsearch:9200
+      - SHUFFLE_APP_HOTLOAD_FOLDER=/app_hotload
+      - ORG_ID=Shuffle
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - shuffle_app_hotload:/app_hotload
+      - shuffle_files:/shuffle-files
     networks:
       - soc-net
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  shuffle-orborus:
+    image: ghcr.io/shuffle/shuffle-orborus:latest
+    container_name: soc-shuffle-orborus
+    hostname: shuffle-orborus
+    environment:
+      - SHUFFLE_GRPC_ENDPOINT=soc-shuffle-orborus:9000
+      - SHUFFLE_WORKER_VERSION=latest
+      - SHUFFLE_ELASTICSEARCH_URL=http://soc-elasticsearch:9200
+      - SHUFFLE_OPENSEARCH_URL=http://soc-elasticsearch:9200
+      - BASE_URL=http://soc-shuffle-backend:5001
+      - DOCKER_API_VERSION=1.40
+      - SHUFFLE_BASE_IMAGE_NAME=shuffle-app
+      - SHUFFLE_BASE_IMAGE_REGISTRY=ghcr.io
+      - SHUFFLE_BASE_IMAGE_TAG_SUFFIX="-1.0.0"
+      - CLEANUP=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - soc-net
+    restart: unless-stopped
 
 networks:
   soc-net:
@@ -127,3 +165,5 @@ volumes:
   logs_volume:
   ollama_storage:
   open_webui_storage:
+  shuffle_app_hotload:
+  shuffle_files:
