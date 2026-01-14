@@ -1,47 +1,61 @@
 <div style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 900px; margin: 0 auto; line-height: 1.6; color: #333;">
 
-    <h1 style="border-bottom: 2px solid #d12424; padding-bottom: 10px; color: #d12424;">Lab Exercise: ML Phishing Analysis (The Integration)</h1>
+    <h1 style="border-bottom: 2px solid #d12424; padding-bottom: 10px; color: #d12424;">Lab Exercise: ML Phishing Analysis</h1>
     
-    <p>Alright, team. You've got the <strong>SOC-in-a-Box</strong> running. You've got <strong>Shuffle</strong> installed. Now it's time to make them talk to each other.</p>
-    
-    <p>In this lab, we aren't just looking at emails; we are dissecting them. We will take a phishing email from <strong>Claws Mail</strong>, pipe it into <strong>Shuffle</strong>, and use Python to extract the "ML Features" (Entropy, SPF, etc.) discussed in the lecture.</p>
+    <p><strong>Welcome to the SOC.</strong> Today, we aren't just reading about AI security; we are building an automated pipeline to detect it. You will link your <strong>SOC Desktop</strong> (where the victim lives) to <strong>Shuffle SOAR</strong> (where the automation lives) to analyze a phishing attack in real-time.</p>
 
     <div style="background-color: #eef6fc; padding: 15px; border-left: 5px solid #0056b3; margin-bottom: 25px;">
-        <strong>Environment Check (Do this first!):</strong>
-        <ul style="margin-bottom: 0;">
-            <li><strong>SOC Lab:</strong> Accessible at <a href="http://localhost:6080" target="_blank">http://localhost:6080</a> (or 6081).</li>
-            <li><strong>Shuffle:</strong> Accessible at <a href="http://localhost:3001" target="_blank">http://localhost:3001</a> (or https://localhost:3443).</li>
-            <li>If they aren't running, fire up your Docker containers now!</li>
-        </ul>
+        <strong>Lab Objective:</strong><br>
+        Simulate an "Automated Forwarding Rule" that sends suspicious emails from the desktop to a Machine Learning workflow for analysis.
     </div>
 
     <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
 
-    <h2 style="color: #0056b3;">Part 1: The Shuffle Workflow (The Brain)</h2>
-    <p>We need to teach Shuffle how to read an email file (<code>.eml</code>) and find the scary stuff.</p>
+    <h2 style="color: #0056b3;">Part 0: Pre-Flight Checks & Troubleshooting</h2>
+    <p>Before you start, verify your environment is active. If the execution fails with "Client version too old", run the fix below.</p>
+    <ul>
+        <li><strong>Desktop:</strong> <a href="http://localhost:6080" target="_blank">http://localhost:6080</a> (Should see Ubuntu)</li>
+        <li><strong>Shuffle:</strong> <a href="http://localhost:3001" target="_blank">http://localhost:3001</a> (Should see Login)</li>
+    </ul>
 
+    <div style="background-color: #fff3cd; color: #856404; padding: 15px; border: 1px solid #ffeeba; border-radius: 5px; margin-top: 10px;">
+        <strong>⚠️ Critical Fix: If your Workflow stays "Grey" or won't run:</strong><br>
+        Open a terminal in your Shuffle directory and run these commands to update the Docker execution engine:<br>
+        <code style="display:block; background:#333; color:#fff; padding:5px; margin-top:5px;">docker compose down<br>docker compose pull<br>docker compose up -d</code>
+    </div>
+
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
+
+    <h2 style="color: #0056b3;">Part 1: Build the Brain (Shuffle Workflow)</h2>
+    
     <h3>1.1 Create the Webhook Trigger</h3>
     <ol>
-        <li>Log into <strong>Shuffle</strong> (<a href="http://localhost:3001" target="_blank">localhost:3001</a>).</li>
+        <li>Log into <strong>Shuffle</strong>.</li>
         <li>Create a <strong>New Workflow</strong> named "ML Phishing Analyzer".</li>
-        <li>Drag a <strong>Webhook</strong> trigger from the left sidebar onto the canvas.</li>
-        <li>Click it and copy the <strong>Webhook URI</strong>.
-            <br><em>It will look like: <code>http://localhost:3001/api/v1/hooks/webhook_...</code></em>
+        <li>Drag the <strong>Webhook</strong> trigger onto the canvas from the left sidebar.</li>
+        <li><strong>CRITICAL STEP:</strong> Click the Webhook node to select it, then copy the <strong>Webhook URI</strong> displayed in the settings.
+            <br><em>It looks like: <code>http://localhost:3001/api/v1/hooks/webhook_...</code></em>
         </li>
-        <li><strong>Start</strong> the Webhook.</li>
+        <li>Click the big <strong>Start</strong> button on the Webhook node.</li>
     </ol>
 
-    <h3>1.2 The Feature Extractor (Python Node)</h3>
-    <p>This is where the magic happens. We will use Python to calculate <strong>Shannon Entropy</strong> (randomness) on links and parse the authentication headers.</p>
+    <h3>1.2 Add the Feature Extractor</h3>
+    <p>This node parses the raw email and calculates "Entropy" (randomness) to find weird links.</p>
     <ol>
-        <li>Search for the <strong>"Shuffle Tools"</strong> app on the left.</li>
-        <li>Drag it onto the canvas and connect it to the Webhook.</li>
-        <li>Change the action to <strong>Execute Python</strong>.</li>
-        <li>Paste this code (I've cleaned it up to handle the Claws Mail format perfectly):</li>
+        <li>Search for <strong>"Shuffle Tools"</strong> on the left sidebar and drag it onto the canvas.</li>
+        <li><strong>CONNECT THE DOTS:</strong> Drag the small arrow from the <strong>Webhook</strong> node to this new node.</li>
+        <li>Edit the node settings:
+            <ul>
+                <li><strong>Name:</strong> Feature_Extractor</li>
+                <li><strong>Action:</strong> Execute Python</li>
+                <li><strong>Code:</strong> Delete the default code and paste the code below.</li>
+            </ul>
+        </li>
     </ol>
 
-    <div style="position: relative;">
-        <pre style="background: #f4f4f4; border: 1px solid #ddd; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 0.9em;">
+    <details open>
+        <summary style="cursor: pointer; font-weight: bold; color: #d12424;">Click to copy Python Code #1 (Feature_Extractor)</summary>
+        <pre style="background: #f4f4f4; border: 1px solid #ddd; padding: 10px; overflow-x: auto; font-size: 0.85em;">
 import base64
 import re
 import sys
@@ -58,154 +72,195 @@ def shannon_entropy(s):
     return -sum((c/n) * log2(c/n) for c in counts.values())
 
 def norm(u):
-    # Strip http/https and query params for cleaner analysis
     u2 = re.sub(r'^https?://', '', u, flags=re.I)
     return u2.split("#")[0]
 
-# 1. Read Input
 try:
-    body = json.loads(sys.stdin.read())
-except json.JSONDecodeError:
-    print(json.dumps({"error": "Invalid JSON input"}))
-    sys.exit(1)
+    # Read input safely
+    raw_input = sys.stdin.read()
+    if not raw_input:
+        print(json.dumps({"success": False, "error": "Empty input received"}))
+        sys.exit(0)
+        
+    body = json.loads(raw_input)
+except Exception as e:
+    print(json.dumps({"success": False, "error": f"JSON Parse Error: {str(e)}"}))
+    sys.exit(0)
 
-# 2. Decode EML (Handles both raw text and base64)
+# Extract Email Data (handles both text and b64)
 eml_bytes = b""
 data_obj = body.get("data", {})
 
+# Try to find the email content in various common fields
 if "eml_b64" in data_obj:
     try:
         eml_bytes = base64.b64decode(data_obj["eml_b64"])
-    except:
-        print(json.dumps({"error": "Base64 decode failed"}))
-        sys.exit(1)
+    except: pass
 elif "eml_text" in data_obj:
     eml_bytes = str(data_obj["eml_text"]).encode("utf-8")
-else:
-    print(json.dumps({"error": "No email data found"}))
-    sys.exit(1)
+elif "body" in body: # Fallback for simple webhooks
+    eml_bytes = str(body["body"]).encode("utf-8")
 
-# 3. Parse Email
-msg = BytesParser(policy=policy.default).parsebytes(eml_bytes)
-subject = msg["Subject"] or "No Subject"
-from_h = msg["From"] or "Unknown"
-authres = msg["Authentication-Results"] or ""
+# Parse the Email
+try:
+    msg = BytesParser(policy=policy.default).parsebytes(eml_bytes)
+    subject = msg.get("subject", "No Subject")
+    from_h = msg.get("from", "Unknown")
+    authres = msg.get("Authentication-Results", "")
 
-# 4. Extract URLs
-text_content = ""
-if msg.is_multipart():
-    for part in msg.walk():
-        if part.get_content_type() in ["text/plain", "text/html"]:
-            try: text_content += part.get_content()
-            except: pass
-else:
-    text_content = msg.get_content()
+    text_content = ""
+    if msg.is_multipart():
+        for part in msg.walk():
+            if part.get_content_type() in ["text/plain", "text/html"]:
+                try: text_content += part.get_content()
+                except: pass
+    else:
+        text_content = msg.get_content()
 
-# Regex to find http/https links
-urls = sorted(set(re.findall(r'https?://[^\s\'"<>]+', text_content, flags=re.I)))
+    urls = sorted(set(re.findall(r'https?://[^\s\'"<>]+', text_content, flags=re.I)))
 
-# 5. Calculate Features (Entropy)
-url_features = [{"url": u, "entropy": round(shannon_entropy(norm(u)),4)} for u in urls]
+    print(json.dumps({
+      "success": True,
+      "subject": subject,
+      "from": from_h,
+      "spf_raw": authres,
+      "url_features": [{"url": u, "entropy": round(shannon_entropy(norm(u)),4)} for u in urls]
+    }))
 
-# 6. Parse SPF (Feature: Auth Fail)
-spf_status = "unknown"
-if authres:
-    m_spf = re.search(r'spf=(pass|fail|softfail|neutral)', authres, re.I)
-    if m_spf: spf_status = m_spf.group(1)
+except Exception as e:
+    print(json.dumps({"success": False, "error": f"Parsing Error: {str(e)}"}))
+        </pre>
+    </details>
 
-# 7. Output Features
-output = {
-  "subject": subject,
-  "from": from_h,
-  "spf_feature": spf_status,
-  "urls_found": len(urls),
-  "url_features": url_features
-}
-print(json.dumps(output))
-</pre>
-    </div>
+    <h3>1.3 Add the Scoring Engine</h3>
+    <p>This node acts as the "AI Decision Maker", applying rules to the extracted features.</p>
+    <ol>
+        <li>Drag <strong>another</strong> "Shuffle Tools" node onto the canvas.</li>
+        <li><strong>CONNECT:</strong> Drag the arrow from <strong>Feature_Extractor</strong> to this new node.</li>
+        <li>Edit the node settings:
+            <ul>
+                <li><strong>Name:</strong> Scoring_Engine</li>
+                <li><strong>Action:</strong> Execute Python</li>
+                <li><strong>Code:</strong> Paste the code below.</li>
+            </ul>
+        </li>
+    </ol>
 
-    <h3>1.3 The Scoring Logic</h3>
-    <p>Add a second <strong>Execute Python</strong> node after the first one. This mimics an ML model making a decision based on the features.</p>
-    <pre style="background: #f4f4f4; border: 1px solid #ddd; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 0.9em;">
+    <details open>
+        <summary style="cursor: pointer; font-weight: bold; color: #d12424;">Click to copy Python Code #2 (Scoring_Engine)</summary>
+        <pre style="background: #f4f4f4; border: 1px solid #ddd; padding: 10px; overflow-x: auto; font-size: 0.85em;">
 import sys
 import json
 
-body = json.loads(sys.stdin.read())
-data = body.get("data", {}) # Get output from previous node
+try:
+    body = json.loads(sys.stdin.read())
+    # Shuffle passes the Result of the previous node in the "data" field
+    # We also check "body" in case the previous node output structure varies
+    input_data = body.get("data", {})
+    if not input_data and "url_features" in body:
+        input_data = body
 
-# Features
-features = data.get("url_features", [])
-spf = data.get("spf_feature", "unknown")
+    features = input_data.get("url_features", [])
+    spf_raw = input_data.get("spf_raw", "").lower()
 
-risk_score = 0
-triggers = []
+    risk_score = 0
+    triggers = []
 
-# 1. Entropy Check (High randomness = Phishing)
-for f in features:
-    if f["entropy"] > 4.5:
-        risk_score += 40
-        triggers.append(f"High Entropy URL detected: {f['url']}")
+    # 1. Entropy Check (High randomness = Phishing)
+    for f in features:
+        if f.get("entropy", 0) > 4.0:
+            risk_score += 40
+            triggers.append(f"High Entropy URL: {f['url']}")
 
-# 2. SPF Check (Did the sender cheat?)
-if spf in ["fail", "softfail", "none"]:
-    risk_score += 30
-    triggers.append(f"SPF Check Failed: {spf}")
+    # 2. SPF Check (Did the sender cheat?)
+    if "fail" in spf_raw or "softfail" in spf_raw:
+        risk_score += 30
+        triggers.append("SPF Validation Failed")
 
-# 3. Decision Boundary
-verdict = "Clean"
-if risk_score >= 60:
-    verdict = "Malicious"
-elif risk_score >= 30:
-    verdict = "Suspicious"
+    # 3. Verdict
+    verdict = "Clean"
+    if risk_score >= 60: verdict = "Malicious"
+    elif risk_score >= 30: verdict = "Suspicious"
 
-print(json.dumps({
-    "final_score": risk_score,
-    "verdict": verdict,
-    "ml_triggers": triggers
-}))
-</pre>
+    print(json.dumps({
+        "final_score": risk_score,
+        "verdict": verdict,
+        "triggers": triggers
+    }))
+
+except Exception as e:
+    print(json.dumps({"success": False, "error": str(e)}))
+        </pre>
+    </details>
+
+    <p><strong>Save your Workflow</strong> (Floppy disk icon at the bottom).</p>
 
     <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
 
-    <h2 style="color: #0056b3;">Part 2: The Attack (Using Claws Mail)</h2>
-    <p>Now, let's act like a SOC analyst. We will take an email from our Desktop and manually "inject" it into the automation engine.</p>
+    <h2 style="color: #0056b3;">Part 2: The Attack (Injection)</h2>
+    <p>We will now use the Desktop Terminal to manually forward a phishing email to our new automation pipeline.</p>
 
-    <h3>2.1 Export the Evidence</h3>
+    <h3>2.1 Save the Evidence</h3>
     <ol>
-        <li>Log into your <strong>SOC Desktop</strong> (<a href="http://localhost:6080" target="_blank">localhost:6080</a>).</li>
-        <li>Open <strong>Claws Mail</strong>.</li>
-        <li>Find a juicy email (Look for "Urgent" or "Invoice").</li>
-        <li><strong>Right-click</strong> the email &rarr; <strong>Save as...</strong></li>
-        <li>Save it to the Desktop as <code>phish.eml</code>.</li>
+        <li>Inside the <strong>SOC Desktop</strong>, open <strong>Claws Mail</strong>.</li>
+        <li>Right-click the "URGENT: 2FA Reset" email.</li>
+        <li>Select <strong>Save as...</strong> and save it to the Desktop as <code>phish.eml</code>.</li>
     </ol>
 
-    <h3>2.2 The Ingestion Command</h3>
-    <p>Open the <strong>Terminal</strong> inside the SOC Desktop (Ubuntu) and paste this command. This simulates an automated forwarding rule sending the email to Shuffle.</p>
-    
+    <h3>2.2 Prepare the Terminal</h3>
+    <p>Open the Terminal inside the SOC Desktop. First, ensure we have the necessary tool:</p>
+    <code style="background: #2d3b45; color: #fff; padding: 5px; display: block; margin-bottom: 10px;">sudo apt update && sudo apt install -y curl</code>
+
+    <h3>2.3 Run the Injection</h3>
+    <p>Copy and paste these commands one by one to ensure the data sends correctly. <br><strong>IMPORTANT:</strong> Paste your Webhook ID (from Step 1.1) into the first line.</p>
+
     <div style="background: #2d3b45; color: #fff; padding: 15px; border-radius: 4px; overflow-x: auto;">
-        <p style="margin: 0; color: #aaa;"># 1. Set your specific Webhook ID (Copy from Step 1.1)</p>
-        <code style="display: block; margin-bottom: 10px;">HOOK_ID="YOUR_WEBHOOK_ID_HERE"</code>
+        <code style="display: block; margin-bottom: 10px; color: #81a1c1;"># 1. Store your Webhook ID (Paste yours here!)</code>
+        <code style="display: block; margin-bottom: 10px;">HOOK_ID="YOUR-UUID-GOES-HERE"</code>
+        
+        <code style="display: block; margin-bottom: 10px; color: #81a1c1;"># 2. Encode the email file into a variable</code>
+        <code style="display: block; margin-bottom: 10px;">EMAIL_DATA=$(base64 -w0 ~/Desktop/phish.eml)</code>
 
-        <p style="margin: 0; color: #aaa;"># 2. Define the Target (We use host.docker.internal to reach Shuffle on your main PC)</p>
-        <code style="display: block; margin-bottom: 10px;">TARGET="http://host.docker.internal:3001/api/v1/hooks/$HOOK_ID"</code>
-
-        <p style="margin: 0; color: #aaa;"># 3. Encode & Send</p>
-        <code style="display: block;">base64 -w0 ~/Desktop/phish.eml | \
-curl -s -X POST "$TARGET" \
+        <code style="display: block; margin-bottom: 10px; color: #81a1c1;"># 3. Send the data securely (using -k to trust the certificate)</code>
+        <code style="display: block;">curl -k -s -X POST "https://soc-shuffle-frontend/api/v1/hooks/$HOOK_ID" \
 -H 'Content-Type: application/json' \
--d '{"data":{"eml_b64":"'"$(cat -)"'"}}'</code>
+-d "{\"data\":{\"eml_b64\":\"$EMAIL_DATA\"}}"</code>
     </div>
 
-    <p style="margin-top: 15px; font-style: italic;"><strong>Troubleshooting:</strong> If <code>host.docker.internal</code> doesn't work (common on Linux hosts), try replacing it with your computer's actual LAN IP address (e.g., <code>192.168.x.x</code>).</p>
+    <p>If successful, you will see a message: <code>{"success": true, "execution_id": "..."}</code>.</p>
 
-    <h3>2.3 Verify the Results</h3>
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
+
+    <h2 style="color: #0056b3;">Part 3: Viewing the Results</h2>
+    <p>You sent the email to the automation engine. Now, let's see if it caught the phish.</p>
+
+    <h3>3.1 Locate the Execution</h3>
     <ol>
-        <li>Go back to <strong>Shuffle</strong>.</li>
-        <li>Click the <strong>Running Man</strong> icon (Runs) at the bottom.</li>
-        <li>Open the latest run.</li>
-        <li>Check the final Python node. Did it score the email correctly?</li>
-        <li><strong>Success!</strong> You just built a Feature Extraction pipeline for ML-based Phishing detection.</li>
+        <li>Go back to your <strong>Shuffle Dashboard</strong>.</li>
+        <li>Open your <strong>"ML Phishing Analyzer"</strong> workflow.</li>
+        <li>Look at the <strong>Bottom Menu Bar</strong>. Click the icon that looks like a <strong>Person Running</strong> (the "Runs" button).</li>
+        <li>Click the <strong>Top Item</strong> in the list (this is your latest attack).</li>
     </ol>
+
+    <h3>3.2 Inspect the Verdict</h3>
+    <ol>
+        <li>You will see your nodes with green checkmarks.</li>
+        <li>Click the <strong>Scoring_Engine</strong> node (the last one).</li>
+        <li>A panel will slide out on the right. Click the <strong>"Output"</strong> or <strong>"Result"</strong> tab.</li>
+        <li>You should see the final analysis:</li>
+    </ol>
+
+    <div style="background-color: #d4edda; color: #155724; padding: 15px; border: 1px solid #c3e6cb; border-radius: 5px;">
+        <strong>✅ Successful Detection:</strong>
+        <pre style="margin: 0; font-weight: bold;">
+{
+    "final_score": 70,
+    "verdict": "Malicious",
+    "triggers": [
+        "High Entropy URL: http://login-secure-update-89sd7f.net...",
+        "SPF Validation Failed"
+    ]
+}</pre>
+    </div>
 
 </div>
