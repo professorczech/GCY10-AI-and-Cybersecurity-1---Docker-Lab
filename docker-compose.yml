@@ -121,7 +121,6 @@ services:
     ports:
       - "5001:5001"
     environment:
-      # Point both variables to Elastic to ensure compatibility
       - SHUFFLE_ELASTICSEARCH_URL=http://soc-elasticsearch:9200
       - SHUFFLE_OPENSEARCH_URL=http://soc-elasticsearch:9200
       - SHUFFLE_APP_HOTLOAD_FOLDER=/app_hotload
@@ -131,7 +130,10 @@ services:
       - shuffle_app_hotload:/app_hotload
       - shuffle_files:/shuffle-files
     networks:
-      - soc-net
+      soc-net:
+        aliases:
+          - shuffle-backend
+          - soc-shuffle-backend
     depends_on:
       - elasticsearch
     restart: unless-stopped
@@ -141,25 +143,33 @@ services:
     container_name: soc-shuffle-orborus
     hostname: shuffle-orborus
     environment:
-      - SHUFFLE_GRPC_ENDPOINT=soc-shuffle-orborus:9000
-      - SHUFFLE_WORKER_VERSION=latest
+      - CONTAINER_NAME=soc-shuffle-orborus
       - SHUFFLE_ELASTICSEARCH_URL=http://soc-elasticsearch:9200
       - SHUFFLE_OPENSEARCH_URL=http://soc-elasticsearch:9200
+      - ORG_ID=Shuffle
+      - ENVIRONMENT_NAME=Shuffle
       - BASE_URL=http://soc-shuffle-backend:5001
-      - DOCKER_API_VERSION=1.40
-      - SHUFFLE_BASE_IMAGE_NAME=shuffle-app
-      - SHUFFLE_BASE_IMAGE_REGISTRY=ghcr.io
-      - SHUFFLE_BASE_IMAGE_TAG_SUFFIX="-1.0.0"
+      - SHUFFLE_WORKER_SERVER_URL=http://soc-shuffle-backend:5001
+      - SHUFFLE_WORKER_IMAGE=ghcr.io/shuffle/shuffle-worker:latest
+      - SHUFFLE_WORKER_VERSION=latest
+      - SHUFFLE_WORKER_DOCKER_NETWORK=soc-net
       - CLEANUP=true
+      - DOCKER_API_VERSION=1.44
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
-      - soc-net
+      soc-net:
+        aliases:
+          - shuffle-orborus
+          - soc-shuffle-orborus
     restart: unless-stopped
+
+
 
 networks:
   soc-net:
     driver: bridge
+    name: soc-net
 
 volumes:
   logs_volume:
