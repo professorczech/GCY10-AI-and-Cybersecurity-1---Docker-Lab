@@ -139,31 +139,40 @@ services:
     restart: unless-stopped
 
   shuffle-orborus:
-    image: ghcr.io/shuffle/shuffle-orborus:latest
-    container_name: soc-shuffle-orborus
-    hostname: shuffle-orborus
-    environment:
-      - CONTAINER_NAME=soc-shuffle-orborus
-      - SHUFFLE_ELASTICSEARCH_URL=http://soc-elasticsearch:9200
-      - SHUFFLE_OPENSEARCH_URL=http://soc-elasticsearch:9200
-      - ORG_ID=Shuffle
-      - ENVIRONMENT_NAME=Shuffle
-      - BASE_URL=http://soc-shuffle-backend:5001
-      - SHUFFLE_WORKER_SERVER_URL=http://soc-shuffle-backend:5001
-      - SHUFFLE_WORKER_IMAGE=ghcr.io/shuffle/shuffle-worker:latest
-      - SHUFFLE_WORKER_VERSION=latest
-      - SHUFFLE_WORKER_DOCKER_NETWORK=soc-net
-      - CLEANUP=true
-      - DOCKER_API_VERSION=1.44
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      soc-net:
-        aliases:
-          - shuffle-orborus
-          - soc-shuffle-orborus
-    restart: unless-stopped
+      image: ghcr.io/shuffle/shuffle-orborus:latest
+      container_name: soc-shuffle-orborus
+      hostname: shuffle-orborus
+      environment:
+        # Orborus expects THIS variable name (not CONTAINER_NAME)
+        - ORBORUS_CONTAINER_NAME=soc-shuffle-orborus
 
+        - SHUFFLE_ELASTICSEARCH_URL=http://soc-elasticsearch:9200
+        - SHUFFLE_OPENSEARCH_URL=http://soc-elasticsearch:9200
+        - ORG_ID=Shuffle
+        - ENVIRONMENT_NAME=Shuffle
+
+        # Backend API base
+        - BASE_URL=http://soc-shuffle-backend:5001
+
+        # Worker image
+        - SHUFFLE_WORKER_IMAGE=ghcr.io/shuffle/shuffle-worker:latest
+        - SHUFFLE_WORKER_VERSION=latest
+
+        # Ensure workers join your custom network
+        - SHUFFLE_WORKER_DOCKER_NETWORK=soc-net
+
+        # Docker API version must be compatible with your daemon (your logs show daemon wants >= 1.44)
+        - DOCKER_API_VERSION=1.44
+
+        - CLEANUP=true
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+      networks:
+        soc-net:
+          aliases:
+            - shuffle-orborus
+            - soc-shuffle-orborus
+      restart: unless-stopped
 
 
 networks:
